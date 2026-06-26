@@ -40,16 +40,17 @@ import (
 )
 
 var (
-	err              error
-	c                clientset.Interface
-	m                metadata.Service
-	clientProtocol   = flag.String("client-protocol", "http", "the test bucket location")
-	bucketLocation   = flag.String("test-bucket-location", "us-central1", "the test bucket location")
-	skipGcpSaTest    = flag.Bool("skip-gcp-sa-test", true, "skip GCP SA test")
-	apiEnv           = flag.String("api-env", "prod", "cluster API env")
-	zbFlag           = flag.Bool("enable-zb", false, "use GCS Zonal Buckets for the tests")
-	profilesFlag     = flag.Bool("enable-gcsfuse-profiles-test", false, "enable gcsfuse profiles for the tests")
-	kernelParamsFlag = flag.Bool("enable-gcsfuse-kernel-params-test", false, "enable kernel params for the tests")
+	err                error
+	c                  clientset.Interface
+	m                  metadata.Service
+	clientProtocol     = flag.String("client-protocol", "http", "the test bucket location")
+	bucketLocation     = flag.String("test-bucket-location", "us-central1", "the test bucket location")
+	skipGcpSaTest      = flag.Bool("skip-gcp-sa-test", true, "skip GCP SA test")
+	apiEnv             = flag.String("api-env", "prod", "cluster API env")
+	zbFlag             = flag.Bool("enable-zb", false, "use GCS Zonal Buckets for the tests")
+	profilesFlag       = flag.Bool("enable-gcsfuse-profiles-test", false, "enable gcsfuse profiles for the tests")
+	kernelParamsFlag   = flag.Bool("enable-gcsfuse-kernel-params-test", false, "enable kernel params for the tests")
+	lustreStorageClass = flag.String("lustre-storage-class", "lustre-rwx", "StorageClass for Lustre-backed PVC in lustre gcsfuse data pipeline tests")
 )
 
 var _ = func() bool {
@@ -65,7 +66,7 @@ var _ = func() bool {
 	flag.Parse()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
-	c, err = clientset.New(framework.TestContext.KubeConfig, 0, false)
+	c, err = clientset.New(framework.TestContext.KubeConfig, 0)
 	if err != nil {
 		klog.Fatalf("Failed to configure k8s client: %v", err)
 	}
@@ -86,6 +87,7 @@ var _ = func() bool {
 		klog.Fatalf("Failed to create fake meta data service: %v", err)
 	}
 
+	testsuites.LustreStorageClass = *lustreStorageClass
 	testsuites.GCSFuseVersionStr = specs.GetGCSFuseVersion()
 	return true
 }()
@@ -127,6 +129,7 @@ var _ = ginkgo.Describe("E2E Test Suite", func() {
 			testsuites.InitGcsFuseCSIOIDCTestSuite,
 			testsuites.InitGcsFuseCSICloudProfilerTestSuite,
 			testsuites.InitGcsFuseCSIWorkloadIdentityFederationTestSuite,
+			testsuites.InitGcsFuseCSILustreDataPipelineTestSuite,
 		}
 
 		if *profilesFlag {
